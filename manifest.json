@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "ynnad.discord-stream",
+  "name": "Discord Overlay",
+  "version": "0.3.0",
+  "author": "ynnad",
+  "description": "Discord-style overlay: voice channel members that light up while talking (with mute/deafen icons), everyone else's Go Live streams tiled to fit, and a live PS5/Xbox controller view. Super+Tab to move, resize or remove widgets.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Overlay.qml"
+  }
+}
