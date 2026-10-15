@@ -10,7 +10,8 @@ Every second it prints one JSON line:
    "popout": {"width": 960, "height": 540,          # pop-out window size
               "focused": false,  # one stream blown up instead of the grid
               "tiles": [{"name": "alice", "x": 21, "y": 24,
-                         "width": 918, "height": 516}, ...]}}
+                         "width": 918, "height": 516}, ...]},
+   "live": ["alice"]}            # people streaming in your voice channel
 
 "tiles" are where each stream's video sits inside the pop-out window, so the
 overlay can crop away the call header and window buttons, and show every
@@ -117,21 +118,71 @@ def stream_tiles(frame):
     return tiles, focused
 
 
+def voice_users(main):
+    """(name, live) for everyone under a voice channel in the channel sidebar.
+
+    Each user is a panel holding a button with their name; a streaming user's
+    panel also has Discord's "LIVE" pill (text "Live")."""
+    users = []
+
+    def visit_channel(item):
+        for i in range(item.get_child_count()):
+            group = item.get_child_at_index(i)
+            if group is None or group.get_role_name() != "panel":
+                continue
+            for j in range(group.get_child_count()):
+                panel = group.get_child_at_index(j)
+                if panel is None:
+                    continue
+                names, texts = [], []
+
+                def collect(n):
+                    role = n.get_role_name()
+                    if role == "button":
+                        names.append(n.get_name() or "")
+                    elif role == "static":
+                        texts.append(n.get_name() or "")
+                    return False
+
+                walk(panel, collect)
+                if names and names[0]:
+                    users.append((names[0], any(t.strip().lower() == "live" for t in texts)))
+
+    def visit(n):
+        if n.get_role_name() == "list" and n.get_name() == "Channels":
+            for i in range(n.get_child_count()):
+                item = n.get_child_at_index(i)
+                if item is not None and walk(item, lambda x: x.get_role_name() == "link"
+                                             and "(voice channel)" in (x.get_name() or "")):
+                    visit_channel(item)
+            return True
+        return False
+
+    walk(main, visit)
+    return users
+
+
 def snapshot():
     """Returns (state, {"popout": Pop Out button, "focused": focused tile})."""
     app = discord_app()
     if app is None:
-        return {"discord": False, "canPopout": False, "popout": None}, {}
+        return {"discord": False, "canPopout": False, "popout": None, "live": []}, {}
     main, popouts = frames(app)
+    live = set()
     pop_button = find_button(main, "Pop Out") if main is not None else None
     popout, focused = None, None
     for frame in popouts:
         e = frame.get_extents(WINDOW)
         tiles, focus = stream_tiles(frame)
+        live.update(t["name"] for t in tiles)
         if tiles or popout is None:
             popout = {"width": e.width, "height": e.height, "focused": focus is not None, "tiles": tiles}
             focused = focus
-    state = {"discord": True, "canPopout": pop_button is not None and not popouts, "popout": popout}
+    if main is not None:
+        live.update(t["name"] for t in stream_tiles(main)[0])
+        live.update(name for name, is_live in voice_users(main) if is_live)
+    state = {"discord": True, "canPopout": pop_button is not None and not popouts, "popout": popout,
+             "live": sorted(live)}
     return state, {"popout": pop_button, "focused": focused}
 
 
@@ -151,7 +202,7 @@ def main():
             state, nodes = snapshot()
         except Exception as e:  # Discord restarting, bus hiccups, ...
             log(f"snapshot failed: {e}")
-            state, nodes = {"discord": False, "canPopout": False, "popout": None}, {}
+            state, nodes = {"discord": False, "canPopout": False, "popout": None, "live": []}, {}
 
         line = json.dumps(state)
         if line != last:
