@@ -2,14 +2,25 @@
   "schemaVersion": 1,
   "id": "ynnad.discord-stream",
   "name": "Discord Overlay",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "ynnad",
-  "description": "Discord-style overlay: voice channel members that light up while talking (with mute/deafen icons), everyone else's Go Live streams tiled to fit, and a live PS5/Xbox controller view. Super+Tab to move, resize or remove widgets.",
+  "description": "Discord-style overlay: voice channel members that light up while talking (with mute/deafen icons), everyone else's Go Live streams tiled to fit, and a live PS5/Xbox controller view. Super+Tab to move, resize or remove widgets. Includes a bar icon to turn it on and off.",
   "kinds": [
-    "panel"
+    "panel",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "panel": "Overlay.qml"
+    "panel": "Overlay.qml",
+    "barWidget": "Toggle.qml"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Ynnad242/omarchy-discord-overlay",
+  "barWidget": {
+    "displayName": "Discord Overlay",
+    "description": "Turn the Discord overlay on and off. Right-click to edit its layout.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
   }
 }
