@@ -151,13 +151,13 @@ Item {
     : (root.pad.kind || "xbox")
 
   // Stream tiles to show: everyone's stream in the pop-out except yours. With
-  // no accessibility info the whole pop-out window is one tile.
+  // no accessibility info the whole pop-out window is one tile. If the pop-out
+  // is seen but holds no stream tiles, nobody is streaming: show nothing.
   readonly property bool hasTileInfo: root.popoutGeom !== null && root.popoutGeom.width > 0
-    && (root.popoutGeom.tiles || []).length > 0
   readonly property var streamTiles: {
     if (!root.hasTileInfo) return []
     const mine = root.selfNames.map(n => n.toLowerCase())
-    return root.popoutGeom.tiles.filter(t => mine.indexOf(t.name.toLowerCase()) < 0)
+    return (root.popoutGeom.tiles || []).filter(t => mine.indexOf(t.name.toLowerCase()) < 0)
   }
 
   onSourceChanged: {
