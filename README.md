@@ -33,10 +33,11 @@ o.bind("SUPER + TAB", "Discord overlay", [[omarchy-shell shell summon ynnad.disc
 In edit mode you can drag widgets, resize the stream from its corner, remove
 widgets with ×, and open settings with ⚙. Press Esc or Super+Tab when done.
 
-### Optional bar toggle
+### Bar icon
 
-[omarchy-discord-overlay-toggle](https://github.com/Ynnad242/omarchy-discord-overlay-toggle)
-adds a bar icon that turns the overlay on and off.
+The plugin also adds a Discord icon to the bar: left-click turns the overlay on
+and off, right-click opens edit mode. `--enable` asks which bar section to put
+it in; you can also add **Discord Overlay** from the bar's widget settings.
 
 ## Requirements
 
