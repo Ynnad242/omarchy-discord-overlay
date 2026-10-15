@@ -67,6 +67,7 @@ Item {
   property string voiceChannel: ""
   property var voiceMembers: []
   property var selfNames: [] // every name you show up as, to leave your stream out
+  property var liveNames: [] // people in your voice channel who are streaming
   property var pad: ({ connected: false })
   // From discord_a11y.py
   property bool a11yDiscord: false
@@ -259,7 +260,7 @@ Item {
       streamEnabled: root.streamEnabled, autoPopout: root.autoPopout,
       hasStream: root.hasStream, canPopout: root.canPopout, a11yDiscord: root.a11yDiscord,
       sinceLastPress: Date.now() - root.lastPopoutPress, autoPopoutAddress: root.autoPopoutAddress,
-      popoutGeom: root.popoutGeom, selfNames: root.selfNames,
+      popoutGeom: root.popoutGeom, selfNames: root.selfNames, liveNames: root.liveNames,
       streamTiles: root.streamTiles.map(t => t.name), pad: root.pad
     })
   }
@@ -359,6 +360,7 @@ Item {
           root.a11yDiscord = msg.discord === true
           root.canPopout = msg.canPopout === true
           root.popoutGeom = msg.popout || null
+          root.liveNames = msg.live || []
         } catch (e) {}
       }
     }
@@ -742,6 +744,23 @@ Item {
                   font.family: "JetBrainsMono Nerd Font"
                   font.pixelSize: 15
                   color: "#ED4245"
+                }
+                // Discord's red LIVE pill while they're streaming.
+                Rectangle {
+                  anchors.verticalCenter: parent.verticalCenter
+                  visible: root.liveNames.some(n => n.toLowerCase() === modelData.name.toLowerCase())
+                  width: liveText.implicitWidth + 8
+                  height: 16
+                  radius: 4
+                  color: "#ED4245"
+                  Text {
+                    id: liveText
+                    anchors.centerIn: parent
+                    text: "LIVE"
+                    color: "white"
+                    font.pixelSize: 11
+                    font.bold: true
+                  }
                 }
               }
             }

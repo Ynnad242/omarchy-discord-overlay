@@ -4,7 +4,7 @@ A Discord-style in-game overlay for the Omarchy shell, with three widgets that
 float on top of every workspace:
 
 - **Voice**: who's in your voice channel. People light up while talking, with
-  mute and deafen icons.
+  mute and deafen icons, and a red LIVE tag on anyone streaming.
 - **Stream**: everyone else's Go Live streams, tiled to fit (auto grid, side by
   side, or stacked). When you leave the Discord workspace while watching a
   stream, the overlay presses Discord's own **Pop Out** button, hides the
