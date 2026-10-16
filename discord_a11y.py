@@ -6,6 +6,7 @@ readers use. Needs Discord started with ACCESSIBILITY_ENABLED=1 and
 Every second it prints one JSON line:
 
   {"discord": true,              # Discord is exposing its accessibility tree
+                                 # (false too when it runs without the flag)
    "canPopout": true,            # main window has a stream with a Pop Out button
    "popout": {"width": 960, "height": 540,          # pop-out window size
               "focused": false,  # one stream blown up instead of the grid
@@ -162,12 +163,28 @@ def voice_users(main):
     return users
 
 
+def has_content(frame, enough=20):
+    """Discord relaunched without --force-renderer-accessibility (it does that
+    after an auto-update) still shows up on the bus, but with an empty window."""
+    count = 0
+
+    def visit(n):
+        nonlocal count
+        count += 1
+        return count >= enough
+
+    walk(frame, visit)
+    return count >= enough
+
+
 def snapshot():
     """Returns (state, {"popout": Pop Out button, "focused": focused tile})."""
     app = discord_app()
     if app is None:
         return {"discord": False, "canPopout": False, "popout": None, "live": []}, {}
     main, popouts = frames(app)
+    if main is None or not has_content(main):
+        return {"discord": False, "canPopout": False, "popout": None, "live": []}, {}
     live = set()
     pop_button = find_button(main, "Pop Out") if main is not None else None
     popout, focused = None, None
