@@ -1062,8 +1062,15 @@ Item {
           color: "#949ba4"
           font.pixelSize: 12
           text: !root.a11yDiscord
-            ? "Discord isn't exposing its accessibility info, so automatic pop-out can't work. Start Discord with ACCESSIBILITY_ENABLED=1 and --force-renderer-accessibility."
+            ? "Discord isn't exposing its accessibility info, so automatic pop-out can't work. Start Discord with ACCESSIBILITY_ENABLED=1 and --force-renderer-accessibility. (Discord drops the flag when it relaunches itself after an update.)"
             : "When you leave the Discord workspace while watching streams, they pop out into the overlay (everyone's but yours, tiled to fit), and go back into Discord when you return."
+        }
+        Button {
+          visible: !root.a11yDiscord
+          label: "Restart Discord with accessibility"
+          onClicked: Quickshell.execDetached(["bash", "-c",
+            "pkill -x Discord; for i in $(seq 20); do pgrep -x Discord >/dev/null || break; sleep 0.5; done; "
+            + "ACCESSIBILITY_ENABLED=1 setsid discord --force-renderer-accessibility >/dev/null 2>&1 &"])
         }
 
         Text { text: "Stream layout"; color: "#b5bac1"; font.pixelSize: 13 }
