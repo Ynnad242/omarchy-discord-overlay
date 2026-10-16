@@ -170,12 +170,22 @@ Item {
   onCanPopoutChanged: tryPopout()
   onStreamEnabledChanged: root.streamEnabled ? (tryPopout(), stash()) : unstash()
   onEditingChanged: if (!root.editing) root.settingsOpen = false
-  // Switched off from the bar icon: give the stream back to Discord.
+  // Switched off from the bar icon: give the stream back to Discord. Closing
+  // the pop-out only puts the stream back in the main window if that window
+  // is on screen; otherwise Discord drops to a text channel and the stream is
+  // gone, so then the pop-out is brought to you instead.
   onOpenedChanged: {
-    if (root.opened) return
-    if (root.source && root.source.address === root.autoPopoutAddress) popIn()
+    if (root.opened || root.tearingDown) return
+    if (root.discordOnScreen && root.source && root.source.address === root.autoPopoutAddress) popIn()
     else unstash()
   }
+
+  // Plugin reloads (any file in the plugin changing) tear the overlay down.
+  // Leave the pop-out alone then; the reloaded overlay picks it up again.
+  property bool tearingDown: false
+  Component.onDestruction: root.tearingDown = true
+  property bool stateLoaded: false
+  onAutoPopoutAddressChanged: if (root.stateLoaded) saveState()
 
   function dispatchWindow(fn, address, extra) {
     Hyprland.dispatch("hl.dsp.window." + fn + "({ window = \"address:0x" + address + "\"" + (extra ? ", " + extra : "") + " })")
@@ -250,7 +260,7 @@ Item {
   // Back on Discord: close the pop-out we opened so the stream drops back
   // into the main window. Pop-outs you opened yourself are left alone.
   function popIn() {
-    if (!root.source || root.source.address !== root.autoPopoutAddress) return
+    if (root.tearingDown || !root.source || root.source.address !== root.autoPopoutAddress) return
     dispatchWindow("close", root.source.address)
     root.autoPopoutAddress = ""
   }
@@ -306,6 +316,7 @@ Item {
       voiceEnabled: root.voiceEnabled,
       streamEnabled: root.streamEnabled,
       autoPopout: root.autoPopout,
+      autoPopoutAddress: root.autoPopoutAddress,
       extraGameClasses: root.extraGameClasses,
       controllerEnabled: root.controllerEnabled,
       controllerStyle: root.controllerStyle,
@@ -327,6 +338,7 @@ Item {
         if (s.voiceEnabled !== undefined) root.voiceEnabled = s.voiceEnabled
         if (s.streamEnabled !== undefined) root.streamEnabled = s.streamEnabled
         if (s.autoPopout !== undefined) root.autoPopout = s.autoPopout
+        if (s.autoPopoutAddress) root.autoPopoutAddress = s.autoPopoutAddress
         if (s.extraGameClasses) root.extraGameClasses = s.extraGameClasses
         if (s.controllerEnabled !== undefined) root.controllerEnabled = s.controllerEnabled
         if (s.controllerStyle) root.controllerStyle = s.controllerStyle
@@ -347,6 +359,7 @@ Item {
         }
         if (s.enabled !== undefined) root.opened = s.enabled
       } catch (e) {}
+      root.stateLoaded = true
     }
   }
 
