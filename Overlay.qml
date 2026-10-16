@@ -219,7 +219,32 @@ Item {
     root.lastGridPress = Date.now()
     a11yHelper.write("grid\n")
   }
-  onPopoutGeomChanged: ensureGrid()
+  // A pop-out that opens straight onto the hidden workspace is never laid
+  // out: its stream tiles are 0 pixels tall. Resizing it (float, then back
+  // to tiled) makes Discord lay it out, even while hidden.
+  property real lastNudge: 0
+  function ensureLaidOut() {
+    if (!root.popoutGeom || !root.popoutGeom.collapsed || !root.source) return
+    if (!root.source.workspace || root.source.workspace.name !== root.stashWorkspace) return
+    if (Date.now() - root.lastNudge < 3000) return
+    root.lastNudge = Date.now()
+    dispatchWindow("float", root.source.address, "action = \"toggle\"")
+    unfloat.address = root.source.address
+    unfloat.start()
+  }
+  Timer {
+    id: unfloat
+    property string address
+    interval: 500
+    onTriggered: root.dispatchWindow("float", address, "action = \"toggle\"")
+  }
+  Timer {
+    interval: 2000
+    repeat: true
+    running: root.popoutGeom !== null && root.popoutGeom.collapsed === true
+    onTriggered: root.ensureLaidOut()
+  }
+  onPopoutGeomChanged: { ensureGrid(); ensureLaidOut() }
   onWantsGridChanged: ensureGrid()
 
   // Back on Discord: close the pop-out we opened so the stream drops back

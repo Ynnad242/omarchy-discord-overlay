@@ -10,6 +10,7 @@ Every second it prints one JSON line:
    "canPopout": true,            # main window has a stream with a Pop Out button
    "popout": {"width": 960, "height": 540,          # pop-out window size
               "focused": false,  # one stream blown up instead of the grid
+              "collapsed": false,  # has streams, but Discord never laid them out
               "tiles": [{"name": "alice", "x": 21, "y": 24,
                          "width": 918, "height": 516}, ...]},
    "live": ["alice"]}            # people streaming in your voice channel
@@ -91,16 +92,21 @@ def stream_tiles(frame):
     """Every 'Call tile, stream, <user>' button in the frame, in window coords.
 
     In Discord's grid view the tiles sit inside a list; a stream tile outside
-    one is the focused (blown up) stream. Returns (tiles, focused tile node)."""
+    one is the focused (blown up) stream. A pop-out that opened straight onto a
+    hidden workspace is never laid out, so its tiles are 0 pixels tall
+    ("collapsed"). Returns (tiles, focused tile node, collapsed)."""
     tiles, focused = [], None
+    collapsed = False
 
     def visit(n, in_list):
-        nonlocal focused
+        nonlocal focused, collapsed
         role = n.get_role_name()
         name = n.get_name() or ""
         if role == "button" and name.startswith(TILE_PREFIX):
             e = n.get_extents(WINDOW)
-            if e.width > 0 and e.height > 0:
+            if e.width <= 0 or e.height <= 0:
+                collapsed = True
+            else:
                 tiles.append({"name": name[len(TILE_PREFIX):], "x": e.x, "y": e.y,
                               "width": e.width, "height": e.height})
                 if not in_list and focused is None:
@@ -116,7 +122,7 @@ def stream_tiles(frame):
         visit(frame, False)
     except Exception:
         pass
-    return tiles, focused
+    return tiles, focused, collapsed
 
 
 def voice_users(main):
@@ -190,10 +196,11 @@ def snapshot():
     popout, focused = None, None
     for frame in popouts:
         e = frame.get_extents(WINDOW)
-        tiles, focus = stream_tiles(frame)
+        tiles, focus, collapsed = stream_tiles(frame)
         live.update(t["name"] for t in tiles)
         if tiles or popout is None:
-            popout = {"width": e.width, "height": e.height, "focused": focus is not None, "tiles": tiles}
+            popout = {"width": e.width, "height": e.height, "focused": focus is not None,
+                      "collapsed": collapsed and not tiles, "tiles": tiles}
             focused = focus
     if main is not None:
         live.update(t["name"] for t in stream_tiles(main)[0])
