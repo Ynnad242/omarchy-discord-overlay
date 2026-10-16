@@ -64,6 +64,15 @@ it in; you can also add **Discord Overlay** from the bar's widget settings.
 
 Layout and settings are saved in `~/.local/state/discord-stream-overlay.json`.
 
+If auto pop-out stops working after Discord updates itself, Discord probably
+restarted without the accessibility flag. The overlay's settings (⚙ in edit
+mode) will say so and offer a **Restart Discord with accessibility** button.
+
+## Discord version
+
+Last tested with **Discord 1.0.162**. See [CHANGELOG.md](CHANGELOG.md) for the
+Discord version each release was tested with.
+
 This isn't affiliated with Discord. It uses Discord's local RPC and
 accessibility interfaces, which could change with any Discord update.
 
