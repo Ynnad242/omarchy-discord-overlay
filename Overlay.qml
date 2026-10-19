@@ -792,7 +792,12 @@ Item {
                 // Discord's red LIVE pill while they're streaming.
                 Rectangle {
                   anchors.verticalCenter: parent.verticalCenter
-                  visible: root.liveNames.some(n => n.toLowerCase() === modelData.name.toLowerCase())
+                  // Discord's sidebar adds the status to the name while
+                  // muted or deafened ("alice, Muted"), so match the prefix.
+                  visible: root.liveNames.some(n => {
+                    const live = n.toLowerCase(), name = modelData.name.toLowerCase()
+                    return live === name || live.startsWith(name + ", ")
+                  })
                   width: liveText.implicitWidth + 8
                   height: 16
                   radius: 4

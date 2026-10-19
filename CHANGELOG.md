@@ -5,6 +5,14 @@ reads Discord's accessibility tree, which can change with any Discord update,
 so if something breaks, compare your version (Discord → User Settings, bottom
 of the left column) with the one below.
 
+## 0.5.3 (2026-10-19)
+
+Tested with **Discord 1.0.162** (Electron 42.11.12).
+
+- The LIVE tag now also shows for people who are muted or deafened. Discord's
+  sidebar adds the status to their name ("alice, Muted"), which the overlay
+  didn't match before.
+
 ## 0.5.2 (2026-10-19)
 
 Tested with **Discord 1.0.162** (Electron 42.11.12).
