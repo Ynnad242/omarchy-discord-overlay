@@ -5,6 +5,16 @@ reads Discord's accessibility tree, which can change with any Discord update,
 so if something breaks, compare your version (Discord → User Settings, bottom
 of the left column) with the one below.
 
+## 0.5.2 (2026-10-19)
+
+Tested with **Discord 1.0.162** (Electron 42.11.12).
+
+- Pop-outs that Discord opens already titled with the channel name (e.g.
+  "General") instead of "Discord Popout" are recognised again. Before, such a
+  pop-out was ignored: it wasn't hidden and its stream never showed in the
+  overlay. The overlay now also matches the window the accessibility helper
+  sees as the pop-out.
+
 ## 0.5.1 (2026-10-16)
 
 Tested with **Discord 1.0.162** (Electron 42.11.12).

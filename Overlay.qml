@@ -87,8 +87,14 @@ Item {
     return /^discord$/i.test(windowClass(t)) && !isPopout(t) && !/updater/i.test(t.title)
   }
 
+  // Discord usually opens a pop-out titled "Discord Popout", but sometimes it
+  // already has the channel name ("General") when it maps. Then fall back to
+  // the window the accessibility helper sees as the pop-out.
   function isPopout(t) {
-    return /discord/i.test(windowClass(t)) && t.lastIpcObject && t.lastIpcObject.initialTitle === "Discord Popout"
+    if (!/discord/i.test(windowClass(t)) || !t.lastIpcObject) return false
+    if (t.lastIpcObject.initialTitle === "Discord Popout") return true
+    const a11yTitle = root.popoutGeom ? (root.popoutGeom.title || "") : ""
+    return a11yTitle !== "" && a11yTitle !== "Discord" && !/ - Discord$/.test(a11yTitle) && t.title === a11yTitle
   }
 
   readonly property var source: {

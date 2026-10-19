@@ -8,7 +8,7 @@ Every second it prints one JSON line:
   {"discord": true,              # Discord is exposing its accessibility tree
                                  # (false too when it runs without the flag)
    "canPopout": true,            # main window has a stream with a Pop Out button
-   "popout": {"width": 960, "height": 540,          # pop-out window size
+   "popout": {"title": "General", "width": 960, "height": 540,          # pop-out window size
               "focused": false,  # one stream blown up instead of the grid
               "collapsed": false,  # has streams, but Discord never laid them out
               "tiles": [{"name": "alice", "x": 21, "y": 24,
@@ -199,7 +199,8 @@ def snapshot():
         tiles, focus, collapsed = stream_tiles(frame)
         live.update(t["name"] for t in tiles)
         if tiles or popout is None:
-            popout = {"width": e.width, "height": e.height, "focused": focus is not None,
+            popout = {"title": frame.get_name() or "", "width": e.width, "height": e.height,
+                      "focused": focus is not None,
                       "collapsed": collapsed and not tiles, "tiles": tiles}
             focused = focus
     if main is not None:
