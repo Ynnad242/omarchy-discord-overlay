@@ -3,7 +3,7 @@
 readers use. Needs Discord started with ACCESSIBILITY_ENABLED=1 and
 --force-renderer-accessibility.
 
-Every second it prints one JSON line:
+Twice a second it checks, and prints one JSON line whenever something changed:
 
   {"discord": true,              # Discord is exposing its accessibility tree
                                  # (false too when it runs without the flag)
@@ -36,6 +36,7 @@ gi.require_version("Atspi", "2.0")
 from gi.repository import Atspi  # noqa: E402
 
 WINDOW = Atspi.CoordType.WINDOW
+POLL = 0.5  # seconds between checks; one check costs ~15 ms
 
 
 def log(msg):
@@ -78,17 +79,55 @@ def frames(app):
     return main, popouts
 
 
-def find_button(frame, name):
-    found = []
-    walk(frame, lambda n: n.get_role_name() == "button" and n.get_name() == name
-         and found.append(n) is None)
-    return found[0] if found else None
+def find_all(frame, role, role_name):
+    """Every node with this role under frame.
+
+    Asks Discord to do the search itself (AT-SPI Collection): one bus call
+    instead of one per node, ~100x faster on a busy window. Falls back to
+    walking the tree if Collection isn't available."""
+    try:
+        rule = Atspi.MatchRule.new(
+            Atspi.StateSet.new([]), Atspi.CollectionMatchType.ALL,
+            None, Atspi.CollectionMatchType.ALL,
+            [role], Atspi.CollectionMatchType.ANY,
+            [], Atspi.CollectionMatchType.ALL, False)
+        found = frame.get_collection_iface().get_matches(
+            rule, Atspi.CollectionSortOrder.CANONICAL, 0, True)
+        return [n for n in found if n is not None]
+    except Exception:
+        found = []
+        walk(frame, lambda n: n.get_role_name() == role_name and found.append(n) and False)
+        return found
+
+
+def buttons(frame):
+    return find_all(frame, Atspi.Role.PUSH_BUTTON, "button")
+
+
+def find_button(frame, name, all_buttons=None):
+    for n in all_buttons if all_buttons is not None else buttons(frame):
+        if n.get_name() == name:
+            return n
+    return None
+
+
+def in_list(node, frame):
+    """True if node sits inside a list (stops at frame)."""
+    try:
+        n = node.get_parent()
+        while n is not None and n != frame:
+            if n.get_role_name() == "list":
+                return True
+            n = n.get_parent()
+    except Exception:
+        pass
+    return False
 
 
 TILE_PREFIX = "Call tile, stream, "
 
 
-def stream_tiles(frame):
+def stream_tiles(frame, all_buttons=None):
     """Every 'Call tile, stream, <user>' button in the frame, in window coords.
 
     In Discord's grid view the tiles sit inside a list; a stream tile outside
@@ -97,29 +136,19 @@ def stream_tiles(frame):
     ("collapsed"). Returns (tiles, focused tile node, collapsed)."""
     tiles, focused = [], None
     collapsed = False
-
-    def visit(n, in_list):
-        nonlocal focused, collapsed
-        role = n.get_role_name()
-        name = n.get_name() or ""
-        if role == "button" and name.startswith(TILE_PREFIX):
+    try:
+        for n in all_buttons if all_buttons is not None else buttons(frame):
+            name = n.get_name() or ""
+            if not name.startswith(TILE_PREFIX):
+                continue
             e = n.get_extents(WINDOW)
             if e.width <= 0 or e.height <= 0:
                 collapsed = True
-            else:
-                tiles.append({"name": name[len(TILE_PREFIX):], "x": e.x, "y": e.y,
-                              "width": e.width, "height": e.height})
-                if not in_list and focused is None:
-                    focused = n
-            return
-        in_list = in_list or role == "list"
-        for i in range(n.get_child_count()):
-            child = n.get_child_at_index(i)
-            if child is not None:
-                visit(child, in_list)
-
-    try:
-        visit(frame, False)
+                continue
+            tiles.append({"name": name[len(TILE_PREFIX):], "x": e.x, "y": e.y,
+                          "width": e.width, "height": e.height})
+            if focused is None and not in_list(n, frame):
+                focused = n
     except Exception:
         pass
     return tiles, focused, collapsed
@@ -155,17 +184,15 @@ def voice_users(main):
                 if names and names[0]:
                     users.append((names[0], any(t.strip().lower() == "live" for t in texts)))
 
-    def visit(n):
-        if n.get_role_name() == "list" and n.get_name() == "Channels":
-            for i in range(n.get_child_count()):
-                item = n.get_child_at_index(i)
-                if item is not None and walk(item, lambda x: x.get_role_name() == "link"
-                                             and "(voice channel)" in (x.get_name() or "")):
-                    visit_channel(item)
-            return True
-        return False
-
-    walk(main, visit)
+    for n in find_all(main, Atspi.Role.LIST, "list"):
+        if n.get_name() != "Channels":
+            continue
+        for i in range(n.get_child_count()):
+            item = n.get_child_at_index(i)
+            if item is not None and walk(item, lambda x: x.get_role_name() == "link"
+                                         and "(voice channel)" in (x.get_name() or "")):
+                visit_channel(item)
+        break
     return users
 
 
@@ -192,7 +219,8 @@ def snapshot():
     if main is None or not has_content(main):
         return {"discord": False, "canPopout": False, "popout": None, "live": []}, {}
     live = set()
-    pop_button = find_button(main, "Pop Out") if main is not None else None
+    main_buttons = buttons(main)
+    pop_button = find_button(main, "Pop Out", main_buttons)
     popout, focused = None, None
     for frame in popouts:
         e = frame.get_extents(WINDOW)
@@ -203,9 +231,8 @@ def snapshot():
                       "focused": focus is not None,
                       "collapsed": collapsed and not tiles, "tiles": tiles}
             focused = focus
-    if main is not None:
-        live.update(t["name"] for t in stream_tiles(main)[0])
-        live.update(name for name, is_live in voice_users(main) if is_live)
+    live.update(t["name"] for t in stream_tiles(main, main_buttons)[0])
+    live.update(name for name, is_live in voice_users(main) if is_live)
     state = {"discord": True, "canPopout": pop_button is not None and not popouts, "popout": popout,
              "live": sorted(live)}
     return state, {"popout": pop_button, "focused": focused}
@@ -234,7 +261,7 @@ def main():
             print(line, flush=True)
             last = line
 
-        ready, _, _ = select.select([sys.stdin], [], [], 1.0)
+        ready, _, _ = select.select([sys.stdin], [], [], POLL)
         if ready:
             cmd = sys.stdin.readline()
             if not cmd:

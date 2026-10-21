@@ -70,7 +70,7 @@ mode) will say so and offer a **Restart Discord with accessibility** button.
 
 ## Discord version
 
-Last tested with **Discord 1.0.162**. See [CHANGELOG.md](CHANGELOG.md) for the
+Last tested with **Discord 1.0.164**. See [CHANGELOG.md](CHANGELOG.md) for the
 Discord version each release was tested with.
 
 This isn't affiliated with Discord. It uses Discord's local RPC and

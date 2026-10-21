@@ -114,7 +114,9 @@ Item {
   }
 
   // First window that looks like a game: Steam games (steam_app_<id>),
-  // Proton/Wine (*.exe), gamescope, plus any user-supplied classes.
+  // Proton/Wine (*.exe), gamescope, native games like Skate 3, common
+  // emulators, plus any user-supplied classes.
+  readonly property var knownGames: /skate|rpcs3|pcsx2|dolphin-emu|ryujinx|yuzu|citra|cemu|retroarch|ppsspp|duckstation|minecraft/i
   readonly property var game: {
     const extra = root.extraGameClasses !== "" ? new RegExp(root.extraGameClasses, "i") : null
     const list = Hyprland.toplevels.values
@@ -123,7 +125,7 @@ Item {
       const ipc = t.lastIpcObject || {}
       const classes = [ipc.class || "", ipc.initialClass || ""]
       for (const c of classes) {
-        if (/^steam_app_\d+$/i.test(c) || /\.exe$/i.test(c) || /^gamescope$/i.test(c)
+        if (/^steam_app_\d+$|\.exe$|^gamescope$/i.test(c) || root.knownGames.test(c)
             || (extra && extra.test(c)))
           return t
       }

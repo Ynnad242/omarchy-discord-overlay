@@ -5,6 +5,21 @@ reads Discord's accessibility tree, which can change with any Discord update,
 so if something breaks, compare your version (Discord → User Settings, bottom
 of the left column) with the one below.
 
+## 0.6.0 (2026-10-21)
+
+Tested with **Discord 1.0.164** (Electron 42.11.15).
+
+- Much lighter accessibility helper: it now asks Discord to find buttons and
+  lists itself (AT-SPI Collection) instead of walking the whole window node by
+  node three times. One check went from ~0.86 s to ~15 ms, and the helper's
+  CPU use from ~19% to ~1.5%, while checking twice as often (every 0.5 s), so
+  auto pop-out reacts faster.
+- Avatars download in the background. A slow or failing download no longer
+  freezes the voice list (who's talking) for up to 10 seconds, and failed
+  downloads are retried at most once a minute instead of on every mute.
+- "Only while gaming" also recognises native games and emulators (Skate 3,
+  RPCS3, PCSX2, Dolphin, Ryujinx, RetroArch, Minecraft, ...).
+
 ## 0.5.3 (2026-10-19)
 
 Tested with **Discord 1.0.162** (Electron 42.11.12).

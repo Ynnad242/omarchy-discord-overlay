@@ -20,6 +20,7 @@ import os
 import socket
 import struct
 import sys
+import threading
 import time
 import urllib.request
 import uuid
@@ -126,27 +127,29 @@ def avatar_url(user):
     return f"https://cdn.discordapp.com/embed/avatars/{(int(user['id']) >> 22) % 6}.png"
 
 
-def avatar_file(user):
-    """Download the avatar once into a local cache and return a file:// URL.
+def avatar_path(user):
+    return os.path.join(AVATAR_DIR, f"{user['id']}-{user.get('avatar') or 'default'}.png")
+
+
+def download_avatar(user):
+    """Download the avatar into the local cache; True on success.
 
     The overlay only loads local files: having Qt fetch HTTPS images inside the
     shell crashed it once (in OpenSSL while loading CA certificates)."""
-    name = f"{user['id']}-{user.get('avatar') or 'default'}.png"
-    path = os.path.join(AVATAR_DIR, name)
-    if not os.path.exists(path):
-        try:
-            os.makedirs(AVATAR_DIR, exist_ok=True)
-            req = urllib.request.Request(avatar_url(user), headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = resp.read()
-            tmp = path + ".tmp"
-            with open(tmp, "wb") as f:
-                f.write(data)
-            os.replace(tmp, path)
-        except OSError as e:
-            log(f"avatar download failed for {user['id']}: {e}")
-            return ""
-    return "file://" + path
+    path = avatar_path(user)
+    try:
+        os.makedirs(AVATAR_DIR, exist_ok=True)
+        req = urllib.request.Request(avatar_url(user), headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = resp.read()
+        tmp = path + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+        return True
+    except OSError as e:
+        log(f"avatar download failed for {user['id']}: {e}")
+        return False
 
 
 class Voice:
@@ -157,24 +160,49 @@ class Voice:
         self.channel_name = ""
         self.members = {}
         self.speaking = set()
+        # Avatars download in the background so a slow CDN never holds up
+        # speaking events; failed ones are retried after a minute at most.
+        self.lock = threading.Lock()
+        self.avatar_tries = {}  # path -> time of last attempt
 
     def publish(self):
-        members = sorted(self.members.values(), key=lambda m: m["name"].lower())
-        for m in members:
-            m["speaking"] = m["id"] in self.speaking
-        names = {self.me.get("username"), self.me.get("global_name")}
-        if self.me.get("id") in self.members:
-            names.add(self.members[self.me["id"]]["name"])
-        emit({"connected": True, "channel": self.channel_name if self.channel_id else "",
-              "self": sorted(n for n in names if n), "members": members})
+        with self.lock:
+            members = sorted(self.members.values(), key=lambda m: m["name"].lower())
+            members = [dict(m, speaking=m["id"] in self.speaking) for m in members]
+            names = {self.me.get("username"), self.me.get("global_name")}
+            if self.me.get("id") in self.members:
+                names.add(self.members[self.me["id"]]["name"])
+            emit({"connected": True, "channel": self.channel_name if self.channel_id else "",
+                  "self": sorted(n for n in names if n), "members": members})
+
+    def avatar(self, user):
+        """file:// URL of the cached avatar, or "" while it downloads."""
+        path = avatar_path(user)
+        if os.path.exists(path):
+            return "file://" + path
+        now = time.monotonic()
+        if now - self.avatar_tries.get(path, -60) >= 60:
+            self.avatar_tries[path] = now
+            threading.Thread(target=self.fetch_avatar, args=(user,), daemon=True).start()
+        return ""
+
+    def fetch_avatar(self, user):
+        if not download_avatar(user):
+            return
+        with self.lock:
+            m = self.members.get(user["id"])
+            if m is None:
+                return
+            m["avatar"] = "file://" + avatar_path(user)
+        self.publish()
 
     def set_member(self, state):
         user = state["user"]
         vs = state.get("voice_state", {})
-        self.members[user["id"]] = {
+        member = {
             "id": user["id"],
             "name": state.get("nick") or user.get("global_name") or user["username"],
-            "avatar": avatar_file(user),
+            "avatar": self.avatar(user),
             "speaking": False,
             # state["mute"] is you muting them locally.
             "muted": bool(vs.get("mute") or vs.get("self_mute") or state.get("mute")),
@@ -182,13 +210,16 @@ class Voice:
             "serverMuted": bool(vs.get("mute")),
             "serverDeafened": bool(vs.get("deaf")),
         }
+        with self.lock:
+            self.members[user["id"]] = member
 
     def switch_channel(self, channel_id):
         if self.channel_id:
             for evt in VOICE_EVENTS:
                 self.ipc.command("UNSUBSCRIBE", {"channel_id": self.channel_id}, evt)
-        self.channel_id, self.channel_name = None, ""
-        self.members, self.speaking = {}, set()
+        with self.lock:
+            self.channel_id, self.channel_name = None, ""
+            self.members, self.speaking = {}, set()
         if channel_id:
             nonce = self.ipc.command("GET_CHANNEL", {"channel_id": channel_id})
             reply = self.ipc.wait_for(nonce, self.handle)
@@ -217,8 +248,9 @@ class Voice:
             self.set_member(data)
         elif evt == "VOICE_STATE_DELETE":
             uid = data["user"]["id"]
-            self.members.pop(uid, None)
-            self.speaking.discard(uid)
+            with self.lock:
+                self.members.pop(uid, None)
+                self.speaking.discard(uid)
         elif evt == "SPEAKING_START":
             self.speaking.add(data["user_id"])
         elif evt == "SPEAKING_STOP":
