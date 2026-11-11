@@ -76,6 +76,12 @@ Discord version each release was tested with.
 This isn't affiliated with Discord. It uses Discord's local RPC and
 accessibility interfaces, which could change with any Discord update.
 
+## Works with Jarvis
+
+If you also run [Jarvis](https://github.com/Ynnad242/omarchy-dashboard), the
+overlay shares your voice channel with it and hides its widgets while Jarvis is
+on screen. Without Jarvis, nothing changes.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

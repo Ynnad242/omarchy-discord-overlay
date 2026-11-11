@@ -5,6 +5,19 @@ reads Discord's accessibility tree, which can change with any Discord update,
 so if something breaks, compare your version (Discord → User Settings, bottom
 of the left column) with the one below.
 
+## 0.7.0 (2026-11-10)
+
+Tested with **Discord 1.0.164**.
+
+- Works alongside [Jarvis](https://github.com/Ynnad242/omarchy-dashboard): the
+  overlay shares its voice channel state (who's in it, who's talking) through
+  `$XDG_RUNTIME_DIR/discord-voice.json`, so Jarvis can show it without opening
+  a second Discord connection. The file lives in memory and nothing is sent
+  anywhere.
+- The floating widgets stand aside while Jarvis is on screen (it writes
+  `$XDG_RUNTIME_DIR/jarvis-onscreen`), the same way they already do while the
+  Discord window is.
+
 ## 0.6.0 (2026-10-21)
 
 Tested with **Discord 1.0.164** (Electron 42.11.15).
