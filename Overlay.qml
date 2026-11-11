@@ -146,8 +146,20 @@ Item {
     return false
   }
 
-  readonly property bool active: root.opened && !root.discordOnScreen
+  readonly property bool active: root.opened && !root.discordOnScreen && !root.jarvisOnScreen
     && (root.showMode === "always" || root.game !== null)
+
+  // The Jarvis home screen (ynnad.jarvis) says when it is on screen by
+  // writing 1 or 0 to this file; the overlay stays out of its way meanwhile.
+  property bool jarvisOnScreen: false
+  FileView {
+    path: Quickshell.env("XDG_RUNTIME_DIR") + "/jarvis-onscreen"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.jarvisOnScreen = text().trim() === "1"
+    onLoadFailed: root.jarvisOnScreen = false
+  }
   readonly property bool hasStream: root.source !== null
   readonly property bool hasVoice: root.voiceChannel !== ""
   readonly property bool streamShown: root.streamEnabled
@@ -382,10 +394,20 @@ Item {
           root.voiceChannel = msg.connected ? (msg.channel || "") : ""
           root.voiceMembers = msg.connected ? (msg.members || []) : []
           if (msg.self) root.selfNames = msg.self
+          // Share the voice state with other plugins (Jarvis) without a
+          // second Discord connection. tmpfs, so nothing touches the disk.
+          voiceShare.setText(line + "\n")
         } catch (e) {}
       }
     }
     onExited: restartHelper.start()
+  }
+
+  FileView {
+    id: voiceShare
+    path: Quickshell.env("XDG_RUNTIME_DIR") + "/discord-voice.json"
+    atomicWrites: true
+    printErrors: false
   }
 
   Timer {
