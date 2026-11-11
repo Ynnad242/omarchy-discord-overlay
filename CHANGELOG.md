@@ -9,7 +9,7 @@ of the left column) with the one below.
 
 Tested with **Discord 1.0.164**.
 
-- Works alongside [Jarvis](https://github.com/Ynnad242/omarchy-jarvis): the
+- Works alongside [Jarvis](https://github.com/Ynnad242/omarchy-dashboard): the
   overlay shares its voice channel state (who's in it, who's talking) through
   `$XDG_RUNTIME_DIR/discord-voice.json`, so Jarvis can show it without opening
   a second Discord connection. The file lives in memory and nothing is sent

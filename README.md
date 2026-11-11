@@ -78,7 +78,7 @@ accessibility interfaces, which could change with any Discord update.
 
 ## Works with Jarvis
 
-If you also run [Jarvis](https://github.com/Ynnad242/omarchy-jarvis), the
+If you also run [Jarvis](https://github.com/Ynnad242/omarchy-dashboard), the
 overlay shares your voice channel with it and hides its widgets while Jarvis is
 on screen. Without Jarvis, nothing changes.
 
