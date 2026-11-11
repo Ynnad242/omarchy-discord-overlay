@@ -79,5 +79,3 @@ accessibility interfaces, which could change with any Discord update.
 ## License
 
 MIT, see [LICENSE](LICENSE).
-
-Built with [Claude Code](https://claude.com/claude-code).
